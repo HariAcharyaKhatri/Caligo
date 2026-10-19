@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="noir">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111213">
+<title>CALIGO — Rise in the Vertical City</title>
+<link rel="stylesheet" href="css/caligo.css">
+</head>
+<body>
+
+<!-- ===== STICKY TOP HEADER BAR ===== -->
+<header id="top-header" class="top-header">
+  <div class="header-left">
+    <div class="brand" onclick="window.CALIGO.router.go('home')">
+      <span class="brand-crest">◈</span>
+      <span class="brand-name">CALIGO</span>
+      <span class="brand-sub">VERTICAL CITY</span>
+    </div>
+  </div>
+  <div class="header-center">
+    <nav class="header-menu-nav">
+      <a class="header-menu-link" onclick="window.CALIGO.router.go('forums')">Forums</a>
+      <a class="header-menu-link" onclick="window.CALIGO.router.go('newspaper')">News</a>
+      <a class="header-menu-link" onclick="window.CALIGO.router.go('wiki')">Wiki</a>
+      <a class="header-menu-link" onclick="window.CALIGO.router.go('rules')">Rules</a>
+      <a class="header-menu-link" onclick="window.CALIGO.router.go('contact')">Contact</a>
+      <a class="header-menu-link" onclick="window.CALIGO.router.go('credits')">Credits</a>
+    </nav>
+    <div class="top-status-chips" id="top-status-chips">
+      <div class="status-chip ok"><span>✓ City Clear</span></div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="clock-display" id="top-clock">
+      <span id="top-time">12:00:00</span>
+      <small>CST</small>
+    </div>
+    <button class="top-action-btn" id="btn-sound" title="Toggle Sound FX">🔊</button>
+    <button class="top-action-btn" id="btn-theme" title="Switch Theme">🎨</button>
+    <button class="top-action-btn" id="btn-banner" title="Toggle Skyline">🌆</button>
+  </div>
+</header>
+
+<!-- ===== ANIMATED CITY SKYLINE BANNER ===== -->
+<div class="city-banner-wrap" id="city-banner-wrap">
+  <div class="city-banner">
+    <div class="city-cloud cloud-3"></div>
+    <div class="city-cloud cloud-2"></div>
+    <div class="city-cloud cloud-1"></div>
+    <div class="city-plane-left"></div>
+    <div class="city-plane-right"></div>
+    <div class="city-skyline"></div>
+    <div class="city-gradient"></div>
+    <div class="banner-overlay-info">
+      <span class="banner-loc-name" id="banner-loc">The Docks</span>
+      <span class="banner-weather" id="banner-weather">• Clear</span>
+    </div>
+  </div>
+</div>
+
+<div id="app" class="app">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside id="sidebar" class="sidebar">
+    <div class="player-card">
+      <div class="player-head">
+        <div class="avatar-wrap">
+          <div class="avatar" id="side-avatar">◈</div>
+          <div class="avatar-online-dot" title="Connected"></div>
+        </div>
+        <div class="player-id">
+          <div class="player-name-row">
+            <span class="player-name" id="side-name">—</span>
+          </div>
+          <div class="player-honor" id="side-honor">Lvl 1 · Rookie</div>
+          <div class="p-row">
+            <span class="p-label">Cash:</span>
+            <span class="p-money" id="side-cash">$0</span>
+            <button class="quick-bank-btn" id="quick-bank" title="Open Bank">[Bank]</button>
+          </div>
+          <div class="p-row">
+            <span class="p-label">Level:</span> <span class="p-val" id="side-level">1</span>
+            <span class="p-label" style="margin-left:4px;">Pts:</span> <span class="p-val" id="side-points">0</span>
+            <span class="p-label" style="margin-left:4px;">Merits:</span> <span class="p-val" id="side-merits">0</span>
+            <button class="link small" id="use-merits" style="margin-left:2px;">[use]</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- XP Bar -->
+      <div class="xp-row">
+        <div class="xp-head">
+          <span>Level Progress</span>
+          <span id="side-xp-val">0%</span>
+        </div>
+        <div class="xp-track">
+          <div class="xp-fill" id="side-xp-fill"></div>
+        </div>
+      </div>
+
+      <!-- 4 Glowing Vital Bars -->
+      <div class="res-bars-box">
+        <div class="res-row">
+          <div class="res-label" style="color:var(--c-energy)">Energy</div>
+          <div class="res-bar"><i id="sb-energy-fill"></i></div>
+          <div class="res-val"><span id="sb-energy-val">0/0</span><span class="res-time" id="sb-energy-time"></span></div>
+        </div>
+        <div class="res-row">
+          <div class="res-label" style="color:var(--c-nerve)">Nerve</div>
+          <div class="res-bar"><i id="sb-nerve-fill"></i></div>
+          <div class="res-val"><span id="sb-nerve-val">0/0</span><span class="res-time" id="sb-nerve-time"></span></div>
+        </div>
+        <div class="res-row">
+          <div class="res-label" style="color:var(--c-happy)">Happy</div>
+          <div class="res-bar"><i id="sb-happy-fill"></i></div>
+          <div class="res-val"><span id="sb-happy-val">0/0</span><span class="res-time" id="sb-happy-time"></span></div>
+        </div>
+        <div class="res-row">
+          <div class="res-label" style="color:var(--c-life)">Life</div>
+          <div class="res-bar"><i id="sb-life-fill"></i></div>
+          <div class="res-val"><span id="sb-life-val">0/0</span><span class="res-time" id="sb-life-time"></span></div>
+        </div>
+      </div>
+
+      <!-- Battle Stats Mini-Drawer -->
+      <div class="battle-stats-summary" onclick="window.CALIGO.router.go('gym')" title="Click to train at the Gym">
+        <div class="bs-row"><span class="bs-label">Strength</span><span class="bs-val" id="bs-str">10</span></div>
+        <div class="bs-row"><span class="bs-label">Defense</span><span class="bs-val" id="bs-def">10</span></div>
+        <div class="bs-row"><span class="bs-label">Speed</span><span class="bs-val" id="bs-spd">10</span></div>
+        <div class="bs-row"><span class="bs-label">Dexterity</span><span class="bs-val" id="bs-dex">10</span></div>
+        <div class="bs-row" style="margin-top:3px; padding-top:3px; border-top:1px solid var(--line); font-weight:700">
+          <span class="bs-label" style="color:#fff">Battle Power</span>
+          <span class="bs-val gold" id="bs-total">40</span>
+        </div>
+      </div>
+
+      <!-- Quick Action Icons -->
+      <div class="player-icons">
+        <button class="ic-btn" data-screen="mail" title="Mail Messages">✉</button>
+        <button class="ic-btn" data-screen="events" title="Events & Logs">!</button>
+        <button class="ic-btn" data-screen="faction" title="Faction Gang">✦</button>
+        <button class="ic-btn" data-screen="settings" title="Settings">⚙</button>
+      </div>
+    </div>
+
+    <div class="side-section">Districts & Areas</div>
+    <nav id="nav-areas" class="side-nav"></nav>
+
+    <div class="side-section">Intel & Lists</div>
+    <nav id="nav-lists" class="side-nav"></nav>
+
+    <div class="side-footer" id="side-footer">
+      <div id="server-time">—</div>
+      <div class="small dim">CALIGO v3.0 Ultra · Node: cal-01</div>
+    </div>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <main id="screen" class="main" tabindex="-1" aria-live="polite"></main>
+
+</div>
+
+<div id="toasts" class="toasts" aria-live="polite"></div>
+<div id="modal-root"></div>
+<div id="boot" class="boot"></div>
+
+<!-- core audio & helpers -->
+<script src="js/ui/audio.js"></script>
+<script src="js/util.js"></script>
+<script src="js/config.js"></script>
+
+<!-- data -->
+<script src="js/data/items.js"></script>
+<script src="js/data/targets.js"></script>
+<script src="js/data/crimes.js"></script>
+<script src="js/data/world.js"></script>
+<script src="js/data/bots.js"></script>
+<script src="js/data/travel.js"></script>
+<script src="js/data/tradeGoods.js"></script>
+<script src="js/data/jobs.js"></script>
+<script src="js/data/education.js"></script>
+<script src="js/data/companies.js"></script>
+<script src="js/data/factions.js"></script>
+<script src="js/data/territories.js"></script>
+<script src="js/data/casino.js"></script>
+<script src="js/data/missions.js"></script>
+<script src="js/data/newspaper.js"></script>
+
+<!-- state and simulation -->
+<script src="js/state.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/bots.js"></script>
+<script src="js/actions.js"></script>
+<script src="js/actions/combat.js"></script>
+<script src="js/actions/economy.js"></script>
+<script src="js/actions/jobs.js"></script>
+<script src="js/actions/education.js"></script>
+<script src="js/actions/companies.js"></script>
+<script src="js/actions/factions.js"></script>
+<script src="js/actions/casino.js"></script>
+<script src="js/actions/missions.js"></script>
+
+<!-- ui system -->
+<script src="js/ui/dom.js"></script>
+<script src="js/ui/components.js"></script>
+<script src="js/ui/sidebar.js"></script>
+<script src="js/ui/router.js"></script>
+
+<!-- screens -->
+<script src="js/ui/screens/home.js"></script>
+<script src="js/ui/screens/city.js"></script>
+<script src="js/ui/screens/crimes.js"></script>
+<script src="js/ui/screens/gym.js"></script>
+<script src="js/ui/screens/combat.js"></script>
+<script src="js/ui/screens/inventory.js"></script>
+<script src="js/ui/screens/shops.js"></script>
+<script src="js/ui/screens/armoury.js"></script>
+<script src="js/ui/screens/market.js"></script>
+<script src="js/ui/screens/bank.js"></script>
+<script src="js/ui/screens/travel.js"></script>
+<script src="js/ui/screens/jail.js"></script>
+<script src="js/ui/screens/hospital.js"></script>
+<script src="js/ui/screens/job.js"></script>
+<script src="js/ui/screens/education.js"></script>
+<script src="js/ui/screens/properties.js"></script>
+<script src="js/ui/screens/companies.js"></script>
+<script src="js/ui/screens/faction.js"></script>
+<script src="js/ui/screens/territory.js"></script>
+<script src="js/ui/screens/casino.js"></script>
+<script src="js/ui/screens/missions.js"></script>
+<script src="js/ui/screens/newspaper.js"></script>
+<script src="js/ui/screens/forums.js"></script>
+<script src="js/ui/screens/halloffame.js"></script>
+<script src="js/ui/screens/calendar.js"></script>
+<script src="js/ui/screens/recruit.js"></script>
+<script src="js/ui/screens/lists.js"></script>
+<script src="js/ui/screens/mail.js"></script>
+<script src="js/ui/screens/events.js"></script>
+<script src="js/ui/screens/settings.js"></script>
+<script src="js/ui/screens/wiki.js"></script>
+<script src="js/ui/screens/rules.js"></script>
+<script src="js/ui/screens/credits.js"></script>
+<script src="js/ui/screens/contact.js"></script>
+
+<script src="js/main.js"></script>
+</body>
+</html>

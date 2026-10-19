@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="34" height="68" viewBox="0 0 34 68">
+  <defs>
+    <clipPath id="clip-facebook">
+      <rect width="34" height="68"/>
+    </clipPath>
+  </defs>
+  <g id="facebook" clip-path="url(#clip-facebook)">
+    <rect id="Rectangle_11" data-name="Rectangle 11" width="24" height="24" rx="5" transform="translate(5 5)" fill="#545454"/>
+    <g id="Group_10" data-name="Group 10" transform="translate(-21 1)">
+      <path id="Path_7" data-name="Path 7" d="M16,8a8,8,0,1,0-9.933,7.764v-5.32H4.418V8h1.65V6.947c0-2.723,1.232-3.985,3.906-3.985a8.821,8.821,0,0,1,1.739.2V5.376c-.189-.02-.517-.03-.924-.03-1.312,0-1.819.5-1.819,1.789V8h2.613l-.449,2.445H8.969v5.5A8,8,0,0,0,16,8" transform="translate(30 8)" fill="#eee"/>
+      <path id="Path_8" data-name="Path 8" d="M144.77,100.031l.449-2.445h-2.613v-.865c0-1.292.507-1.789,1.819-1.789.407,0,.735.01.924.03V92.747a8.821,8.821,0,0,0-1.739-.2c-2.673,0-3.906,1.262-3.906,3.985v1.053h-1.65v2.445h1.65v5.32a8.045,8.045,0,0,0,2.9.177v-5.5Z" transform="translate(-103.636 -81.586)" fill="#555"/>
+    </g>
+    <rect id="Rectangle_11-2" data-name="Rectangle 11" width="24" height="24" rx="5" transform="translate(5 39)" fill="#3365aa"/>
+    <g id="Group_10-2" data-name="Group 10" transform="translate(-21 35)">
+      <path id="Path_7-2" data-name="Path 7" d="M16,8a8,8,0,1,0-9.933,7.764v-5.32H4.418V8h1.65V6.947c0-2.723,1.232-3.985,3.906-3.985a8.821,8.821,0,0,1,1.739.2V5.376c-.189-.02-.517-.03-.924-.03-1.312,0-1.819.5-1.819,1.789V8h2.613l-.449,2.445H8.969v5.5A8,8,0,0,0,16,8" transform="translate(30 8)" fill="#fff"/>
+      <path id="Path_8-2" data-name="Path 8" d="M144.77,100.031l.449-2.445h-2.613v-.865c0-1.292.507-1.789,1.819-1.789.407,0,.735.01.924.03V92.747a8.821,8.821,0,0,0-1.739-.2c-2.673,0-3.906,1.262-3.906,3.985v1.053h-1.65v2.445h1.65v5.32a8.045,8.045,0,0,0,2.9.177v-5.5Z" transform="translate(-103.636 -81.586)" fill="#555"/>
+    </g>
+  </g>
+</svg>
