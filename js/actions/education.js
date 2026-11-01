@@ -40,7 +40,8 @@ window.CALIGO = window.CALIGO || {};
     var course = S.courseById(sv.education.active);
     if (!course) { sv.education.active = null; return; }
     var elapsed = sv.meta.gameTime - sv.education.startedAt;
-    var needed = course.hours * 3600;
+    var eduMerit = (sv.player.meritUpgrades && sv.player.meritUpgrades.edu) ? sv.player.meritUpgrades.edu * 0.02 : 0;
+    var needed = Math.round(course.hours * 3600 * (1 - eduMerit));
     if (elapsed >= needed) {
       sv.education.completed.push(course.id);
       sv.education.active = null;
@@ -57,7 +58,9 @@ window.CALIGO = window.CALIGO || {};
     if (!sv.education.active || sv.education.active !== courseId) return 0;
     var course = S.courseById(courseId);
     var elapsed = sv.meta.gameTime - sv.education.startedAt;
-    return Math.min(1, elapsed / (course.hours * 3600));
+    var eduMerit = (sv.player.meritUpgrades && sv.player.meritUpgrades.edu) ? sv.player.meritUpgrades.edu * 0.02 : 0;
+    var needed = Math.round(course.hours * 3600 * (1 - eduMerit));
+    return Math.min(1, elapsed / needed);
   };
 
   C.actions = A;

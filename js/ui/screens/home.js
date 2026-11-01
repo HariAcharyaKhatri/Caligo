@@ -184,27 +184,57 @@ window.CALIGO = window.CALIGO || {};
     var card = h('div', { class: 'top-features-card' });
     card.appendChild(h('div', { class: 'section-title top-round', text: 'TOP CITY FEATURES & UNDERWORLD OPERATIONS (24 SYSTEMS)' }));
 
+    var activeCat = 'all';
+    var featureTabs = [
+      { id: 'all', label: 'All Operations', count: 24 },
+      { id: 'combat', label: 'Combat & Crimes', icon: '⚔' },
+      { id: 'economy', label: 'Economy & Wealth', icon: '$' },
+      { id: 'syndicate', label: 'Syndicates & Empire', icon: '✦' },
+      { id: 'city', label: 'City Intel & Public', icon: '◉' }
+    ];
+
+    var featureCategories = {
+      crimes: 'combat', gym: 'combat', combat: 'combat', armoury: 'combat', bounties: 'combat', drugs: 'combat',
+      travel: 'economy', market: 'economy', bank: 'economy', casino: 'economy', shops: 'economy', properties: 'economy',
+      factions: 'syndicate', territories: 'syndicate', companies: 'syndicate', missions: 'syndicate', jobs: 'syndicate', education: 'syndicate',
+      hospital: 'city', jail: 'city', newspaper: 'city', forums: 'city', halloffame: 'city', wiki: 'city'
+    };
+
     var grid = h('div', { class: 'features-grid' });
-    TOP_FEATURES.forEach(function (f) {
-      var fCard = h('div', {
-        class: 'feature-card',
-        style: { cursor: f.screen ? 'pointer' : 'default' },
-        onclick: function () {
-          if (f.screen) C.router.go(f.screen);
-        }
-      },
-        h('div', { class: 'feature-icon-bubble', text: f.icon }),
-        h('div', { class: 'feature-body' },
-          h('div', { class: 'feature-title-row' },
-            h('span', { class: 'feature-title', text: f.title }),
-            f.screen ? h('span', { class: 'tag', text: 'ENTER' }) : null
-          ),
-          h('p', { class: 'feature-desc', text: f.desc })
-        )
-      );
-      grid.appendChild(fCard);
+
+    function renderFilteredFeatures() {
+      C.dom.clear(grid);
+      TOP_FEATURES.forEach(function (f) {
+        var cat = featureCategories[f.id] || 'city';
+        if (activeCat !== 'all' && cat !== activeCat) return;
+
+        var fCard = h('div', {
+          class: 'feature-card',
+          style: { cursor: f.screen ? 'pointer' : 'default' },
+          onclick: function () {
+            if (f.screen) C.router.go(f.screen);
+          }
+        },
+          h('div', { class: 'feature-icon-bubble', text: f.icon }),
+          h('div', { class: 'feature-body' },
+            h('div', { class: 'feature-title-row' },
+              h('span', { class: 'feature-title', text: f.title }),
+              f.screen ? h('span', { class: 'tag', text: 'ENTER' }) : null
+            ),
+            h('p', { class: 'feature-desc', text: f.desc })
+          )
+        );
+        grid.appendChild(fCard);
+      });
+    }
+
+    var tabBar = UI.tabBar(featureTabs, activeCat, function (catId) {
+      activeCat = catId;
+      renderFilteredFeatures();
     });
 
+    card.appendChild(h('div', { style: { padding: '8px 12px 0 12px' } }, tabBar));
+    renderFilteredFeatures();
     card.appendChild(grid);
     return card;
   }

@@ -12,6 +12,7 @@
 <!-- ===== STICKY TOP HEADER BAR ===== -->
 <header id="top-header" class="top-header">
   <div class="header-left">
+    <button class="top-action-btn mobile-only-toggle" id="btn-mobile-nav" title="Toggle Menu Drawer">☰</button>
     <div class="brand" onclick="window.CALIGO.router.go('home')">
       <span class="brand-crest">◈</span>
       <span class="brand-name">CALIGO</span>
@@ -161,6 +162,34 @@
 
 </div>
 
+<!-- ===== MOBILE BOTTOM NAVIGATION BAR ===== -->
+<nav id="mobile-bottom-nav" class="mobile-bottom-nav" aria-label="Mobile Navigation">
+  <button class="mb-btn active" data-screen="home" title="Home">
+    <span class="mb-icon">⌂</span>
+    <span class="mb-label">Home</span>
+  </button>
+  <button class="mb-btn" data-screen="city" title="City Districts">
+    <span class="mb-icon">◉</span>
+    <span class="mb-label">City</span>
+  </button>
+  <button class="mb-btn" data-screen="crimes" title="Underworld Crimes">
+    <span class="mb-icon">☠</span>
+    <span class="mb-label">Crimes</span>
+  </button>
+  <button class="mb-btn" data-screen="gym" title="Iron Gym Facility">
+    <span class="mb-icon">⚡</span>
+    <span class="mb-label">Gym</span>
+  </button>
+  <button class="mb-btn" data-screen="inventory" title="Luggage & Items">
+    <span class="mb-icon">▣</span>
+    <span class="mb-label">Items</span>
+  </button>
+  <button class="mb-btn" id="mb-btn-menu" title="Navigation Drawer">
+    <span class="mb-icon">☰</span>
+    <span class="mb-label">Menu</span>
+  </button>
+</nav>
+
 <div id="toasts" class="toasts" aria-live="polite"></div>
 <div id="modal-root"></div>
 <div id="boot" class="boot"></div>
@@ -186,6 +215,7 @@
 <script src="js/data/casino.js"></script>
 <script src="js/data/missions.js"></script>
 <script src="js/data/newspaper.js"></script>
+<script src="js/data/properties.js"></script>
 
 <!-- state and simulation -->
 <script src="js/state.js"></script>
@@ -243,6 +273,7 @@
 <script src="js/ui/screens/rules.js"></script>
 <script src="js/ui/screens/credits.js"></script>
 <script src="js/ui/screens/contact.js"></script>
+<script src="js/ui/screens/merits.js"></script>
 
 <script src="js/main.js"></script>
 </body>

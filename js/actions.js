@@ -152,13 +152,413 @@ window.CALIGO = window.CALIGO || {};
   A.rollTargets = function (crimeId, count) {
     var crime = C.data.crimeById[crimeId];
     if (!crime) return [];
-    count = count || 4;
+    if (crime.id === 'search_cash') count = count || 6;
+    else if (crime.id === 'bootlegging') count = count || 2;
+    else if (crime.id === 'graffiti') count = count || 7;
+    else if (crime.id === 'shoplift') count = count || 8;
+    else if (crime.id === 'card_skimming') count = count || 5;
+    else if (crime.id === 'hustling') count = count || 5;
+    else if (crime.id === 'cracking') count = count || 2;
+    else if (crime.id === 'forgery') count = count || 5;
+    else if (crime.id === 'scamming') count = count || 3;
+    else if (crime.id === 'arson') count = count || 7;
+    else count = count || 4;
+
     var out = [];
-    for (var i = 0; i < count; i++) out.push(rollTarget(crime));
+    var seen = {};
+
+    for (var i = 0; i < count; i++) {
+      var t = rollTarget(crime, i);
+      var key = t.targetId || t.title;
+      if (seen[key] && i < count * 2) {
+        t = rollTarget(crime, i);
+      }
+      seen[t.targetId || t.title] = true;
+      out.push(t);
+    }
     return out;
   };
 
-  function rollTarget(crime) {
+  function rollTarget(crime, idx) {
+    var tod = C.data.timeOfDay(new Date());
+    var wx = C.engine.weather(save());
+
+    /* Pickpocketing — 22 researched targets */
+    if (crime.id === 'pickpocket' && C.data.pickpocketTargets && C.data.pickpocketTargets.length) {
+      var pt = U.pick(C.data.pickpocketTargets);
+      var diffMod = 0;
+      if (pt.difficulty === 'Easier') diffMod = 10;
+      else if (pt.difficulty === 'Less difficult') diffMod = 5;
+      else if (pt.difficulty === 'Moderate') diffMod = 0;
+      else if (pt.difficulty === 'More difficult') diffMod = -8;
+      else if (pt.difficulty === 'Very difficult') diffMod = -18;
+
+      var traits = [
+        { group: 'Target Profile', label: pt.name, mod: diffMod },
+        { group: 'Condition', label: pt.condition, mod: 0 },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      if (pt.reqItem) {
+        var it = C.data.items[pt.reqItem];
+        traits.push({ group: 'Required Tool', label: it ? it.name : pt.reqItem, mod: 0 });
+      }
+
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: pt.id,
+        title: pt.name + ' (' + pt.condition + ')',
+        subTitle: pt.desc,
+        condition: pt.condition,
+        difficulty: pt.difficulty,
+        reqItem: pt.reqItem || null,
+        uniqueDrop: pt.uniqueDrop || null,
+        traits: traits,
+        mods: diffMod + tod.mod + wx.mod,
+        wealth: { label: pt.difficulty, mult: 1 },
+        rewardMult: 1,
+        rewardMin: pt.cash[0],
+        rewardMax: pt.cash[1]
+      };
+    }
+
+    /* Burglary — 34 researched locations across Residential, Commercial, Industrial */
+    if (crime.id === 'burglary' && C.data.burglaryLocations && C.data.burglaryLocations.length) {
+      var bl = U.pick(C.data.burglaryLocations);
+      var skillPenalty = -Math.round(bl.skill / 6);
+      var reqToolName = C.data.items[bl.reqTool] ? C.data.items[bl.reqTool].name : bl.reqTool;
+
+      var traits = [
+        { group: 'Location', label: bl.name + ' (' + bl.district + ')', mod: skillPenalty },
+        { group: 'District', label: bl.district, mod: 0 },
+        { group: 'Required Tool', label: reqToolName, mod: 0 },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: bl.id,
+        title: bl.name + ' [' + bl.district + ']',
+        subTitle: bl.desc,
+        district: bl.district,
+        reqTool: bl.reqTool,
+        reqItem: bl.reqTool,
+        uniqueDrop: bl.uniqueDrop,
+        traits: traits,
+        mods: skillPenalty + tod.mod + wx.mod,
+        wealth: { label: bl.district, mult: 1 },
+        rewardMult: 1,
+        rewardMin: bl.cash[0],
+        rewardMax: bl.cash[1]
+      };
+    }
+
+    /* Search for Cash — 6 researched subcrimes */
+    if (crime.id === 'search_cash' && C.data.searchCashSubcrimes && C.data.searchCashSubcrimes.length) {
+      var sc = (idx !== undefined && C.data.searchCashSubcrimes[idx]) ? C.data.searchCashSubcrimes[idx] : U.pick(C.data.searchCashSubcrimes);
+      var traits = [
+        { group: 'Location', label: sc.name, mod: 5 },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: sc.id,
+        title: sc.name,
+        subTitle: sc.desc,
+        uniqueDrops: sc.uniqueDrops,
+        traits: traits,
+        mods: 5 + tod.mod + wx.mod,
+        wealth: { label: 'Scavenge', mult: 1 },
+        rewardMult: 1,
+        rewardMin: 50,
+        rewardMax: 350
+      };
+    }
+
+    /* Disposal — 12 jobs & 5 methods */
+    if (crime.id === 'disposal' && C.data.disposalJobs && C.data.disposalJobs.length && C.data.disposalMethods) {
+      var dj = U.pick(C.data.disposalJobs);
+      var methodId = U.pick(dj.methods);
+      var dm = null;
+      C.data.disposalMethods.forEach(function (m) { if (m.id === methodId) dm = m; });
+      dm = dm || C.data.disposalMethods[0];
+
+      var nerveMod = dm.nerve > 8 ? -Math.round((dm.nerve - 8) * 3) : 5;
+      var traits = [
+        { group: 'Cargo', label: dj.name, mod: 0 },
+        { group: 'Method', label: dm.name + ' (' + dm.nerve + 'N)', mod: nerveMod },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      if (dm.reqItem) {
+        var it = C.data.items[dm.reqItem];
+        traits.push({ group: 'Required Item', label: (it ? it.name : dm.reqItem) + (dm.consumes ? ' (consumed)' : ''), mod: 0 });
+      }
+
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: dj.id,
+        methodId: dm.id,
+        title: dj.name + ' via ' + dm.name,
+        subTitle: dm.desc,
+        reqItem: dm.reqItem || null,
+        consumesItem: !!dm.consumes,
+        nerveCost: dm.nerve,
+        traits: traits,
+        mods: nerveMod + tod.mod + wx.mod,
+        wealth: { label: 'Syndicate Payout', mult: 1 },
+        rewardMult: 1,
+        rewardMin: dj.reward[0],
+        rewardMax: dj.reward[1]
+      };
+    }
+
+    /* Bootlegging — Copy DVDs (2N) & Sell DVDs (5N) */
+    if (crime.id === 'bootlegging' && C.data.bootlegActions && C.data.bootlegActions.length) {
+      var ba = (idx !== undefined && C.data.bootlegActions[idx]) ? C.data.bootlegActions[idx] : U.pick(C.data.bootlegActions);
+      var traits = [
+        { group: 'Operation', label: ba.name, mod: ba.nerve === 2 ? 8 : 4 },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      if (ba.reqItem) {
+        var it = C.data.items[ba.reqItem];
+        traits.push({ group: 'Required Material', label: (it ? it.name : ba.reqItem) + (ba.consumesItem ? ' (consumed)' : ''), mod: 0 });
+      }
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: ba.id,
+        title: ba.name,
+        subTitle: ba.desc,
+        nerveCost: ba.nerve,
+        reqItem: ba.reqItem || null,
+        consumesItem: !!ba.consumesItem,
+        producesItem: ba.producesItem || null,
+        traits: traits,
+        mods: (ba.nerve === 2 ? 8 : 4) + tod.mod + wx.mod,
+        wealth: { label: 'Street Black Market', mult: 1 },
+        rewardMult: 1,
+        rewardMin: ba.reward[0],
+        rewardMax: ba.reward[1]
+      };
+    }
+
+    /* Graffiti — 7 Urban Districts (3N) */
+    if (crime.id === 'graffiti' && C.data.graffitiDistricts && C.data.graffitiDistricts.length) {
+      var gd = (idx !== undefined && C.data.graffitiDistricts[idx]) ? C.data.graffitiDistricts[idx] : U.pick(C.data.graffitiDistricts);
+      var traits = [
+        { group: 'Target District', label: gd.name, mod: gd.mod },
+        { group: 'Required Tool', label: 'Black Spray Can', mod: 0 },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: gd.id,
+        title: gd.name,
+        subTitle: gd.desc,
+        nerveCost: gd.nerve,
+        reqTool: 'spray_can',
+        reqItem: 'spray_can',
+        traits: traits,
+        mods: gd.mod + tod.mod + wx.mod,
+        wealth: { label: 'Vandalism Bounty', mult: 1 },
+        rewardMult: 1,
+        rewardMin: gd.reward[0],
+        rewardMax: gd.reward[1]
+      };
+    }
+
+    /* Shoplifting — 8 Commercial Stores (4N) */
+    if (crime.id === 'shoplift' && C.data.shopliftShops && C.data.shopliftShops.length) {
+      var ss = (idx !== undefined && C.data.shopliftShops[idx]) ? C.data.shopliftShops[idx] : U.pick(C.data.shopliftShops);
+      var traits = [
+        { group: 'Store Target', label: ss.name, mod: ss.mod },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: ss.id,
+        title: ss.name,
+        subTitle: ss.desc,
+        nerveCost: ss.nerve,
+        uniqueDrop: ss.uniqueDrop || null,
+        traits: traits,
+        mods: ss.mod + tod.mod + wx.mod,
+        wealth: { label: 'Retail Merchandise', mult: 1 },
+        rewardMult: 1,
+        rewardMin: ss.reward[0],
+        rewardMax: ss.reward[1]
+      };
+    }
+
+    /* Card Skimming — ATM Installation, Harvesting, Selling (6N / 2N) */
+    if (crime.id === 'card_skimming' && C.data.cardSkimmingTargets && C.data.cardSkimmingTargets.length) {
+      var cst = (idx !== undefined && C.data.cardSkimmingTargets[idx]) ? C.data.cardSkimmingTargets[idx] : U.pick(C.data.cardSkimmingTargets);
+      var traits = [
+        { group: 'Skimming Phase', label: cst.name, mod: cst.nerve === 2 ? 6 : 2 },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      if (cst.reqItem) {
+        var it = C.data.items[cst.reqItem];
+        traits.push({ group: 'Required Device', label: it ? it.name : cst.reqItem, mod: 0 });
+      }
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: cst.id,
+        title: cst.name,
+        subTitle: cst.desc,
+        nerveCost: cst.nerve,
+        reqItem: cst.reqItem || null,
+        traits: traits,
+        mods: (cst.nerve === 2 ? 6 : 2) + tod.mod + wx.mod,
+        wealth: { label: 'Fraud Syndicate Yield', mult: 1 },
+        rewardMult: 1,
+        rewardMin: cst.reward[0],
+        rewardMax: cst.reward[1]
+      };
+    }
+
+    /* Hustling — Street Games & Crowd Gathering (4N) */
+    if (crime.id === 'hustling' && C.data.hustlingGames && C.data.hustlingGames.length) {
+      var hg = (idx !== undefined && C.data.hustlingGames[idx]) ? C.data.hustlingGames[idx] : U.pick(C.data.hustlingGames);
+      var traits = [
+        { group: 'Street Hustle', label: hg.name, mod: hg.mod },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: hg.id,
+        title: hg.name,
+        subTitle: hg.desc,
+        nerveCost: hg.nerve,
+        traits: traits,
+        mods: hg.mod + tod.mod + wx.mod,
+        wealth: { label: 'Pedestrian Cash', mult: 1 },
+        rewardMult: 1,
+        rewardMin: hg.reward[0],
+        rewardMax: hg.reward[1]
+      };
+    }
+
+    /* Cracking — Brute-Force & Corporate Encryption (7N / 5N) */
+    if (crime.id === 'cracking' && C.data.crackingActions && C.data.crackingActions.length) {
+      var ca = (idx !== undefined && C.data.crackingActions[idx]) ? C.data.crackingActions[idx] : U.pick(C.data.crackingActions);
+      var traits = [
+        { group: 'Cryptographic Vector', label: ca.name, mod: ca.nerve === 7 ? -4 : 2 },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: ca.id,
+        title: ca.name,
+        subTitle: ca.desc,
+        nerveCost: ca.nerve,
+        traits: traits,
+        mods: (ca.nerve === 7 ? -4 : 2) + tod.mod + wx.mod,
+        wealth: { label: 'Bounty & Data Ledger', mult: 1 },
+        rewardMult: 1,
+        rewardMin: ca.reward[0],
+        rewardMax: ca.reward[1]
+      };
+    }
+
+    /* Forgery — High-Value Document Projects (5N) */
+    if (crime.id === 'forgery' && C.data.forgeryProjects && C.data.forgeryProjects.length) {
+      var fp = (idx !== undefined && C.data.forgeryProjects[idx]) ? C.data.forgeryProjects[idx] : U.pick(C.data.forgeryProjects);
+      var traits = [
+        { group: 'Document Project', label: fp.name, mod: 0 },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: fp.id,
+        title: fp.name,
+        subTitle: fp.desc,
+        nerveCost: fp.nerve,
+        traits: traits,
+        mods: tod.mod + wx.mod,
+        wealth: { label: 'Counterfeit Document Value', mult: 1 },
+        rewardMult: 1,
+        rewardMin: fp.reward[0],
+        rewardMax: fp.reward[1]
+      };
+    }
+
+    /* Scamming — Lead Farming, Phishing, Mark Conversion (8N / 8N / 3N) */
+    if (crime.id === 'scamming' && C.data.scammingActions && C.data.scammingActions.length) {
+      var sa = (idx !== undefined && C.data.scammingActions[idx]) ? C.data.scammingActions[idx] : U.pick(C.data.scammingActions);
+      var traits = [
+        { group: 'Social Engineering Phase', label: sa.name, mod: sa.nerve === 3 ? -6 : 4 },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: sa.id,
+        title: sa.name,
+        subTitle: sa.desc,
+        nerveCost: sa.nerve,
+        traits: traits,
+        mods: (sa.nerve === 3 ? -6 : 4) + tod.mod + wx.mod,
+        wealth: { label: 'Foreign Wire Transfer', mult: 1 },
+        rewardMult: 1,
+        rewardMin: sa.reward[0],
+        rewardMax: sa.reward[1]
+      };
+    }
+
+    /* Arson — 7-Step Sequence (0N, 3N, 5N, 5N, 5N, 5N, 2N) */
+    if (crime.id === 'arson' && C.data.arsonStages && C.data.arsonStages.length) {
+      var as = (idx !== undefined && C.data.arsonStages[idx]) ? C.data.arsonStages[idx] : U.pick(C.data.arsonStages);
+      var traits = [
+        { group: 'Arson Phase', label: as.name, mod: as.nerve === 0 ? 15 : (as.nerve === 2 ? 5 : -4) },
+        { group: 'Time of day', label: tod.label, mod: tod.mod },
+        { group: 'Weather', label: wx.label, mod: wx.mod }
+      ];
+      if (as.reqItem) {
+        var it = C.data.items[as.reqItem];
+        traits.push({ group: 'Required Material', label: (it ? it.name : as.reqItem) + (as.consumesItem ? ' (consumed)' : ''), mod: 0 });
+      }
+      return {
+        id: U.uid(),
+        crimeId: crime.id,
+        targetId: as.id,
+        title: as.name,
+        subTitle: as.desc,
+        nerveCost: as.nerve,
+        reqItem: as.reqItem || null,
+        consumesItem: !!as.consumesItem,
+        uniqueDrops: as.uniqueDrops || null,
+        traits: traits,
+        mods: (as.nerve === 0 ? 15 : (as.nerve === 2 ? 5 : -4)) + tod.mod + wx.mod,
+        wealth: { label: 'Insurance Syndicate Bounty', mult: 1 },
+        rewardMult: 1,
+        rewardMin: as.reward[0],
+        rewardMax: as.reward[1]
+      };
+    }
+
+    /* Procedural fallback for all other crimes */
     var pool = C.data.targetPools[crime.target] || C.data.targetPools.person;
     var traits = [];
     var modTotal = 0;
@@ -173,14 +573,10 @@ window.CALIGO = window.CALIGO || {};
       if (opt.vehItem) crime._rolledVeh = opt.vehItem;
     });
 
-    /* Global conditions: real-clock time of day and today's weather. */
-    var tod = C.data.timeOfDay(new Date());
-    var wx = C.engine.weather(save());
     traits.push({ group: 'Time of day', label: tod.label, mod: tod.mod });
     traits.push({ group: 'Weather', label: wx.label, mod: wx.mod });
     modTotal += tod.mod + wx.mod;
 
-    /* Wealth tier, weighted by how ambitious the crime is. */
     var band = C.data.wealthBandForTier(crime.tier);
     var weights = C.data.wealthWeights[band];
     var list = C.data.wealth.map(function (w, i) { return { w: weights[i], w0: w }; });
@@ -247,6 +643,16 @@ window.CALIGO = window.CALIGO || {};
     var tools = S.toolBonusFor(sv, crime);
     parts.push({ label: 'Tools carried', value: tools.total, kind: 'tools' });
 
+    /* Crimes 2.0 Enhancer Tool check */
+    if (crime.enhancer && S.ownsItem(sv, crime.enhancer)) {
+      parts.push({ label: 'Crime Enhancer (' + (crime.enhancerName || 'Specialist Tool') + ')', value: 10, kind: 'enhancer' });
+    }
+
+    /* Education psychology bonus check */
+    if (sv.education && sv.education.completed && sv.education.completed.indexOf('psy_bachelor') !== -1) {
+      parts.push({ label: 'Psychology Graduate', value: 10, kind: 'education' });
+    }
+
     var raw = 0;
     parts.forEach(function (x) { raw += x.value; });
 
@@ -268,18 +674,33 @@ window.CALIGO = window.CALIGO || {};
     if (S.inTransit(sv)) return { ok: false, reason: 'You are in transit.' };
     if (S.abroad(sv)) return { ok: false, reason: 'You are not in Caligo right now.' };
     if (p.crimeLevel < crime.cl) return { ok: false, reason: 'You are not experienced enough for this job.' };
-    if (p.nerve < crime.nerve) return { ok: false, reason: 'Not enough nerve.' };
+
+    var nerveCost = (target && target.nerveCost !== undefined) ? target.nerveCost : crime.nerve;
+    if (p.nerve < nerveCost) return { ok: false, reason: 'Not enough nerve (requires ' + nerveCost + ').' };
+
+    var reqTool = target && (target.reqItem || target.reqTool);
+    if (reqTool && !S.ownsItem(sv, reqTool)) {
+      var reqObj = C.data.items[reqTool];
+      return { ok: false, reason: 'You need a ' + (reqObj ? reqObj.name : reqTool) + ' in your inventory to commit this crime.' };
+    }
 
     var calc = A.crimeChance(crime, target);
 
     /* Pay the nerve cost up front, win or lose. */
-    p.nerve -= crime.nerve;
+    p.nerve -= nerveCost;
     p.acc.nerve = 0;
     sv.counters.crimes++;
 
-    var crimeXpGain = crime.nerve * 4 + crime.tier * 2;
+    var ceMult = 1 + ((p.meritUpgrades && p.meritUpgrades.ce) ? p.meritUpgrades.ce * 0.03 : 0);
+    var crimeXpGain = Math.round((nerveCost * 4 + crime.tier * 2) * ceMult);
     grantCrimeXp(crimeXpGain);
-    grantHiddenCrimeXp(1 + crime.tier);
+    grantHiddenCrimeXp(Math.max(1, Math.round((1 + crime.tier) * ceMult)));
+
+    if (target && target.consumesItem && target.reqItem) {
+      removeItem(target.reqItem, 1);
+      var consObj = C.data.items[target.reqItem];
+      log('Consumed 1× ' + (consObj ? consObj.name : target.reqItem) + ' during the job.', 'info');
+    }
 
     var succeeded = U.chance(calc.chance);
 
@@ -305,7 +726,9 @@ window.CALIGO = window.CALIGO || {};
 
     /* Payout: skewed toward the bottom, scaled by target wealth, crime
        level and player level. */
-    var base = U.skewRoll(crime.reward[0], crime.reward[1], cfg.CRIME.rewardSkew);
+    var minReward = (target && target.rewardMin !== undefined) ? target.rewardMin : crime.reward[0];
+    var maxReward = (target && target.rewardMax !== undefined) ? target.rewardMax : crime.reward[1];
+    var base = U.skewRoll(minReward, maxReward, cfg.CRIME.rewardSkew);
     var scale = target ? target.rewardMult : 1;
     var clScale = 1 + Math.max(0, p.crimeLevel - crime.cl) * 0.04;
     var lvScale = 1 + (p.level - 1) * 0.01;
@@ -333,6 +756,31 @@ window.CALIGO = window.CALIGO || {};
       log('A ' + extraItem + ' is now parked somewhere the Council cannot see.', 'good');
     }
 
+    /* Item produced (e.g. Bootlegging Copy DVDs) */
+    if (target && target.producesItem && C.data.items[target.producesItem]) {
+      addItem(target.producesItem, 1);
+      var prodName = C.data.items[target.producesItem].name;
+      log('Produced 1× ' + prodName + ' ready for distribution.', 'good');
+    }
+
+    /* Target-specific unique drop or Crime family unique drop */
+    var dropped = null;
+    if (target && target.uniqueDrop && U.chance(0.12)) {
+      dropped = target.uniqueDrop;
+    } else if (target && target.uniqueDrops && target.uniqueDrops.length && U.chance(0.15)) {
+      dropped = U.pick(target.uniqueDrops);
+    } else if (crime.uniqueDrops && crime.uniqueDrops.length && U.chance(0.08)) {
+      dropped = U.pick(crime.uniqueDrops);
+    }
+
+    if (dropped && C.data.items[dropped]) {
+      addItem(dropped, 1);
+      var dropItem = C.data.items[dropped];
+      var dropName = dropItem ? dropItem.name : dropped;
+      log('★ UNIQUE OUTCOME: You recovered a rare ' + dropName + '!', 'good');
+      if (C.ui && C.ui.toast) C.ui.toast('★ Unique Crime Outcome: Found ' + dropName + '!', 'good');
+    }
+
     if (broken.length) {
       log('Broken beyond use: ' + broken.join(', ') + '.', 'bad');
     }
@@ -342,6 +790,7 @@ window.CALIGO = window.CALIGO || {};
       chance: calc.chance, parts: calc.parts,
       payout: payout, xp: xpGain, crimeXp: crimeXpGain,
       wanted: crime.wanted, extraItem: extraItem, broken: broken,
+      uniqueDropItem: dropped,
       text: msg
     };
   }
@@ -797,6 +1246,67 @@ window.CALIGO = window.CALIGO || {};
     var sv = save();
     sv.events.unshift({ id: U.uid(), title: title, text: text, t: sv.meta.gameTime });
     if (sv.events.length > 40) sv.events.length = 40;
+  };
+
+  /* ---- MERITS UPGRADE SYSTEM -------------------------------------------- */
+  A.upgradeMerit = function (meritKey) {
+    var sv = save();
+    var p = sv.player;
+    var cat = cfg.MERITS && cfg.MERITS.categories && cfg.MERITS.categories[meritKey];
+    if (!cat) return { ok: false, reason: 'Unknown merit upgrade category.' };
+
+    p.meritUpgrades = p.meritUpgrades || {
+      sharpness: 0, brawn: 0, protection: 0, evasion: 0,
+      crit: 0, nerve_bar: 0, ce: 0, edu: 0, bank: 0, mug: 0, life: 0
+    };
+
+    var currentTier = p.meritUpgrades[meritKey] || 0;
+    if (currentTier >= cat.max) {
+      return { ok: false, reason: 'This merit category is already at maximum rank (' + cat.max + ').' };
+    }
+
+    if (p.merits < 1) {
+      return { ok: false, reason: 'You do not have any unallocated merits.' };
+    }
+
+    p.merits -= 1;
+    p.meritsSpent = (p.meritsSpent || 0) + 1;
+    p.meritUpgrades[meritKey] = currentTier + 1;
+
+    /* If life or nerve upgraded, adjust resource pools cleanly */
+    if (meritKey === 'nerve_bar') {
+      p.nerve = Math.min(S.maxNerve(p), p.nerve + 1);
+    } else if (meritKey === 'life') {
+      p.life = Math.min(S.maxLife(p), p.life + Math.round(S.maxLife(p) * 0.03));
+    }
+
+    if (C.audio && C.audio.play) C.audio.play('cash');
+    var msg = 'Upgraded ' + cat.name + ' to Rank ' + (currentTier + 1) + '/' + cat.max + '!';
+    log(msg, 'good');
+    if (C.ui && C.ui.toast) C.ui.toast(msg, 'good');
+
+    return { ok: true, tier: currentTier + 1, remaining: p.merits, msg: msg };
+  };
+
+  A.resetMerits = function () {
+    var sv = save();
+    var p = sv.player;
+    var spent = p.meritsSpent || 0;
+    if (spent <= 0) return { ok: false, reason: 'You have not allocated any merits yet.' };
+
+    p.merits = (p.merits || 0) + spent;
+    p.meritsSpent = 0;
+    p.meritUpgrades = {
+      sharpness: 0, brawn: 0, protection: 0, evasion: 0,
+      crit: 0, nerve_bar: 0, ce: 0, edu: 0, bank: 0, mug: 0, life: 0
+    };
+
+    if (C.audio && C.audio.play) C.audio.play('coin');
+    var msg = 'All ' + spent + ' merits have been reset and refunded to your pool.';
+    log(msg, 'info');
+    if (C.ui && C.ui.toast) C.ui.toast(msg, 'info');
+
+    return { ok: true, refunded: spent, totalMerits: p.merits };
   };
 
   C.actions = A;

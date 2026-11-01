@@ -49,15 +49,18 @@ window.CALIGO = window.CALIGO || {};
     if (amount < 1000) return { ok: false, reason: 'Minimum is $1,000.' };
     if (sv.player.cash < amount) return { ok: false, reason: 'Not enough cash on hand.' };
 
+    var bankMerit = (sv.player.meritUpgrades && sv.player.meritUpgrades.bank) ? sv.player.meritUpgrades.bank * 0.05 : 0;
+    var effectiveRate = tier.rate * (1 + bankMerit);
+
     sv.player.cash -= amount;
     sv.bank.deposits.push({
       id: tier.id,
       label: tier.label,
       principal: amount,
-      rate: tier.rate,
+      rate: effectiveRate,
       maturesAt: sv.meta.gameTime + tier.days * 86400
     });
-    A.log('Locked ' + U.money(amount) + ' into a ' + tier.label + '.', 'money');
+    A.log('Locked ' + U.money(amount) + ' into a ' + tier.label + (bankMerit > 0 ? ' (+Merit APR)' : '') + '.', 'money');
     return { ok: true };
   };
 
@@ -83,7 +86,9 @@ window.CALIGO = window.CALIGO || {};
     var elapsed = sv.meta.gameTime - sv.bank.savingsAccruedAt;
     if (elapsed < 3600) return { ok: false, reason: 'Too soon.' };
     var days = Math.min(30, elapsed / 86400);
-    var interest = Math.floor(sv.player.bank * cfg.BANK.savingsRatePerDay * days);
+    var bankMerit = (sv.player.meritUpgrades && sv.player.meritUpgrades.bank) ? sv.player.meritUpgrades.bank * 0.05 : 0;
+    var rate = cfg.BANK.savingsRatePerDay * (1 + bankMerit);
+    var interest = Math.floor(sv.player.bank * rate * days);
     if (interest <= 0) return { ok: false, reason: 'Nothing earned yet.' };
     sv.player.bank += interest;
     sv.bank.savingsAccruedAt = sv.meta.gameTime;
@@ -405,6 +410,78 @@ window.CALIGO = window.CALIGO || {};
     sv.player.travelTo = null;
     sv.player.travelFrom = null;
     sv.player.travelUntil = 0;
+  };
+
+  /* ====================================================================
+     PROPERTIES / REAL ESTATE
+     ==================================================================== */
+
+  A.buyProperty = function (propId) {
+    var sv = save();
+    var prop = (D.propertyById && D.propertyById[propId]);
+    if (!prop) return { ok: false, reason: 'Unknown property.' };
+    sv.player.propertiesOwned = sv.player.propertiesOwned || ['shack'];
+    if (sv.player.propertiesOwned.indexOf(propId) !== -1) {
+      return { ok: false, reason: 'You already own this property.' };
+    }
+    if (sv.player.cash < prop.cost) {
+      return { ok: false, reason: 'You need ' + U.money(prop.cost) + ' to buy this property.' };
+    }
+    sv.player.cash -= prop.cost;
+    sv.player.propertiesOwned.push(propId);
+    sv.player.property = propId;
+    var newMax = S.maxHappiness(sv.player);
+    sv.player.maxHappiness = newMax;
+    sv.player.happiness = Math.max(sv.player.happiness, newMax);
+    A.log('Purchased ' + prop.name + ' for ' + U.money(prop.cost) + ' and moved in. Happiness cap: ' + newMax + '.', 'money');
+    return { ok: true, property: prop };
+  };
+
+  A.moveProperty = function (propId) {
+    var sv = save();
+    var prop = (D.propertyById && D.propertyById[propId]);
+    if (!prop) return { ok: false, reason: 'Unknown property.' };
+    sv.player.propertiesOwned = sv.player.propertiesOwned || ['shack'];
+    if (sv.player.propertiesOwned.indexOf(propId) === -1) {
+      return { ok: false, reason: 'You do not own this property.' };
+    }
+    if (sv.player.property === propId) {
+      return { ok: false, reason: 'You already reside here.' };
+    }
+    sv.player.property = propId;
+    var newMax = S.maxHappiness(sv.player);
+    sv.player.maxHappiness = newMax;
+    if (sv.player.happiness > newMax) {
+      sv.player.happiness = newMax;
+    }
+    A.log('Moved into ' + prop.name + '. Happiness cap is now ' + newMax + '.', 'info');
+    return { ok: true, property: prop };
+  };
+
+  A.sellProperty = function (propId) {
+    var sv = save();
+    if (propId === 'shack') {
+      return { ok: false, reason: 'You cannot sell your basic shack.' };
+    }
+    var prop = (D.propertyById && D.propertyById[propId]);
+    if (!prop) return { ok: false, reason: 'Unknown property.' };
+    sv.player.propertiesOwned = sv.player.propertiesOwned || ['shack'];
+    var idx = sv.player.propertiesOwned.indexOf(propId);
+    if (idx === -1) {
+      return { ok: false, reason: 'You do not own this property.' };
+    }
+    var refund = Math.floor(prop.cost * 0.75);
+    sv.player.propertiesOwned.splice(idx, 1);
+    sv.player.cash += refund;
+    if (sv.player.property === propId) {
+      sv.player.property = 'shack';
+      var newMax = S.maxHappiness(sv.player);
+      if (sv.player.happiness > newMax) {
+        sv.player.happiness = newMax;
+      }
+    }
+    A.log('Sold ' + prop.name + ' for ' + U.money(refund) + ' (75% value).', 'money');
+    return { ok: true, refund: refund };
   };
 
   C.actions = A;

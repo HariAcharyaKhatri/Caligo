@@ -34,10 +34,20 @@ window.CALIGO = window.CALIGO || {};
       live(sv);
       C.engine.live(live);
 
-      /* ---- ACCOUNT ---- */
-      var amtInput = h('input', { type: 'number', min: '1', placeholder: 'Amount', value: '' });
+      /* ---- BANK SERVICE TABS ---- */
+      var activeTab = 'account';
+      var tabsContainer = h('div', { style: { marginBottom: '14px' } });
+      var contentContainer = h('div', { class: 'bank-content-wrap' });
 
-      root.appendChild(UI.card('Account',
+      var bankTabs = [
+        { id: 'account', label: 'Checking & Savings' },
+        { id: 'deposits', label: 'Fixed Deposits', count: sv.bank.deposits.length || null },
+        { id: 'loans', label: 'Syndicate Loans', count: sv.bank.loans.length || null }
+      ];
+
+      /* ---- 1. ACCOUNT SECTION ---- */
+      var amtInput = h('input', { type: 'number', min: '1', placeholder: 'Amount', value: '' });
+      var accountCard = UI.card('Account',
         'Banked money is safe from muggings. Cash in your pocket is not.',
         h('div', { class: 'stack' },
           h('label', { text: 'Amount' }),
@@ -76,9 +86,9 @@ window.CALIGO = window.CALIGO || {};
             }
           })
         )
-      ));
+      );
 
-      /* ---- FIXED TERM DEPOSITS ---- */
+      /* ---- 2. FIXED TERM DEPOSITS ---- */
       var depBody = h('div');
       C.config.BANK.deposits.forEach(function (d) {
         var input = h('input', { type: 'number', min: '1000', placeholder: 'Amount', value: String(d.principal || '') });
@@ -127,10 +137,9 @@ window.CALIGO = window.CALIGO || {};
           ));
         });
       }
+      var depositsCard = UI.card('Fixed-term notes', 'Lock money for a fixed return.', depBody);
 
-      root.appendChild(UI.card('Fixed-term notes', 'Lock money for a fixed return.', depBody));
-
-      /* ---- LOANS ---- */
+      /* ---- 3. LOANS ---- */
       var loanBody = h('div');
       C.config.BANK.loans.forEach(function (l) {
         var already = sv.bank.loans.some(function (x) { return x.id === l.id; });
@@ -181,8 +190,27 @@ window.CALIGO = window.CALIGO || {};
           ));
         });
       }
+      var loansCard = UI.card('Loans', 'Cash now, interest later, collectors if you forget.', loanBody);
 
-      root.appendChild(UI.card('Loans', 'Cash now, interest later, collectors if you forget.', loanBody));
+      function renderBankView() {
+        C.dom.clear(contentContainer);
+        if (activeTab === 'account') {
+          contentContainer.appendChild(accountCard);
+        } else if (activeTab === 'deposits') {
+          contentContainer.appendChild(depositsCard);
+        } else if (activeTab === 'loans') {
+          contentContainer.appendChild(loansCard);
+        }
+      }
+
+      tabsContainer.appendChild(UI.tabBar(bankTabs, activeTab, function (tId) {
+        activeTab = tId;
+        renderBankView();
+      }));
+
+      renderBankView();
+      root.appendChild(tabsContainer);
+      root.appendChild(contentContainer);
 
       return root;
     }

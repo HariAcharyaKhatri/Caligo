@@ -35,7 +35,14 @@ window.CALIGO = window.CALIGO || {};
         location: 'docks', abroad: null, travelUntil: 0, travelTo: null, travelFrom: null,
         /* Merits the player has earned from awards. */
         merits: 0, meritsSpent: 0,
-        points: 0
+        meritUpgrades: {
+          sharpness: 0, brawn: 0, protection: 0, evasion: 0,
+          crit: 0, nerve_bar: 0, ce: 0, edu: 0, bank: 0, mug: 0, life: 0
+        },
+        points: 0,
+        /* Active residence and real estate owned */
+        property: 'shack',
+        propertiesOwned: ['shack']
       },
       inventory: [
         { id: 'knife', qty: 1 },
@@ -81,10 +88,20 @@ window.CALIGO = window.CALIGO || {};
   S.maxNerve = function (p) {
     var lv = Math.floor((p.level - 1) / cfg.LEVEL.nerveEveryLevels) * cfg.LEVEL.nervePerLevel;
     var hd = (p.hiddenNerveTier || 0) * cfg.HIDDEN_NERVE.step;
-    return cfg.LEVEL.baseNerve + lv + hd;
+    var meritNerve = (p.meritUpgrades && p.meritUpgrades.nerve_bar) ? p.meritUpgrades.nerve_bar : 0;
+    return cfg.LEVEL.baseNerve + lv + hd + meritNerve;
   };
-  S.maxHappiness = function (p) { return cfg.LEVEL.baseHappiness + (p.level - 1) * cfg.LEVEL.happinessPerLevel; };
-  S.maxLife = function (p) { return cfg.LEVEL.baseLife + (p.level - 1) * cfg.LEVEL.lifePerLevel; };
+  S.maxHappiness = function (p) {
+    var propId = p.property || 'shack';
+    var prop = (C.data && C.data.propertyById) ? C.data.propertyById[propId] : null;
+    var baseCap = prop ? prop.happyCap : cfg.LEVEL.baseHappiness;
+    return baseCap + (p.level - 1) * cfg.LEVEL.happinessPerLevel;
+  };
+  S.maxLife = function (p) {
+    var base = cfg.LEVEL.baseLife + (p.level - 1) * cfg.LEVEL.lifePerLevel;
+    var meritLife = (p.meritUpgrades && p.meritUpgrades.life) ? p.meritUpgrades.life * 0.03 : 0;
+    return Math.round(base * (1 + meritLife));
+  };
 
   S.xpToNext = function (level) { return Math.round(cfg.LEVEL.xpBase * Math.pow(level, cfg.LEVEL.xpExp)); };
   S.crimeXpToNext = function (cl) { return Math.round(cfg.CRIME_LEVEL.xpBase * Math.pow(cl, cfg.CRIME_LEVEL.xpExp)); };
@@ -165,15 +182,47 @@ window.CALIGO = window.CALIGO || {};
 
   S.equippedWeapon = function (save) { var id = save.player.equipped.weapon; return id ? C.data.items[id] : null; };
   S.equippedArmour = function (save) { var id = save.player.equipped.armour; return id ? C.data.items[id] : null; };
+
+  /* Return stats after merits and permanent passives */
+  S.effectiveStats = function (save) {
+    var p = save.player, s = p.stats, mu = p.meritUpgrades || {};
+    var strBonus = 1 + (mu.brawn || 0) * 0.01;
+    var defBonus = 1 + (mu.protection || 0) * 0.01;
+    var spdBonus = 1 + (mu.sharpness || 0) * 0.01;
+    var dexBonus = 1 + (mu.evasion || 0) * 0.01;
+    return {
+      strength: Math.round(s.strength * strBonus * 100) / 100,
+      defense: Math.round(s.defense * defBonus * 100) / 100,
+      speed: Math.round(s.speed * spdBonus * 100) / 100,
+      dexterity: Math.round(s.dexterity * dexBonus * 100) / 100,
+      intelligence: s.intelligence
+    };
+  };
+
+  S.hasCrimeEnhancer = function (save, crime) {
+    if (!crime.enhancer) return { has: false };
+    var has = S.ownsItem(save, crime.enhancer);
+    return { has: has, id: crime.enhancer, name: crime.enhancerName || 'Enhancer Tool' };
+  };
+
+  S.critChance = function (save) {
+    var mu = save.player.meritUpgrades || {};
+    var baseCrit = 0.05; // 5% base crit
+    var meritCrit = (mu.crit || 0) * 0.01;
+    return baseCrit + meritCrit;
+  };
+
   S.playerPower = function (save) {
-    var p = save.player, w = cfg.COMBAT.powerWeights, s = p.stats;
+    var p = save.player, w = cfg.COMBAT.powerWeights;
+    var s = S.effectiveStats(save);
     var base = s.strength * w.strength + s.defense * w.defense + s.speed * w.speed + s.dexterity * w.dexterity;
     var wp = S.equippedWeapon(save), ar = S.equippedArmour(save);
     return base + (wp ? (wp.dmg || 0) : 0) + (ar ? (ar.def || 0) * 0.5 : 0);
   };
   S.playerDefence = function (save) {
     var ar = S.equippedArmour(save);
-    return save.player.stats.defense + (ar ? (ar.def || 0) : 0);
+    var def = S.effectiveStats(save).defense;
+    return def + (ar ? (ar.def || 0) : 0);
   };
 
   /* ---- Bank helpers -------------------------------------------------- */

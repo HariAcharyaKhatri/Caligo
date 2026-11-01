@@ -47,32 +47,93 @@ window.CALIGO = window.CALIGO || {};
       });
       root.appendChild(eq);
 
-      /* ---- GROUP BY CATEGORY ---- */
+      /* ---- CATEGORY TABS & PAGINATION ---- */
       var list = A.inventoryList();
       if (!list.length) {
-        root.appendChild(UI.card('Empty', null, h('p', { class: 'muted', text: 'You are carrying nothing.' })));
+        root.appendChild(UI.emptyState('🎒', 'Empty Inventory', 'You are currently carrying no items in your personal luggage.'));
         return root;
       }
 
-      D.itemCategories.forEach(function (cat) {
-        var entries = list.filter(function (e) { return e.item.cat === cat.id; });
-        if (!entries.length) return;
+      var activeCat = 'all';
+      var currentPage = 1;
+      var pageSize = 8;
+      var searchQuery = '';
 
-        var body = h('div');
-        entries.forEach(function (e) {
-          body.appendChild(itemRow(e));
+      var searchBox = h('input', {
+        type: 'text',
+        placeholder: 'Search carried items by name…',
+        style: { width: '100%', marginBottom: '10px' }
+      });
+      root.appendChild(searchBox);
+
+      var tabsContainer = h('div', { style: { marginBottom: '14px' } });
+      var itemsContainer = h('div', { class: 'inventory-items-wrap' });
+      var pagContainer = h('div');
+
+      function getCategoryTabs() {
+        var tabs = [{ id: 'all', label: 'All Items', count: list.reduce(function (a, e) { return a + e.qty; }, 0) }];
+        D.itemCategories.forEach(function (cat) {
+          var count = list.filter(function (e) { return e.item.cat === cat.id; })
+                          .reduce(function (a, e) { return a + e.qty; }, 0);
+          if (count > 0) {
+            tabs.push({ id: cat.id, label: cat.label, count: count });
+          }
+        });
+        return tabs;
+      }
+
+      function renderItemsList() {
+        C.dom.clear(itemsContainer);
+        C.dom.clear(pagContainer);
+
+        var filtered = list.filter(function (e) {
+          if (activeCat !== 'all' && e.item.cat !== activeCat) return false;
+          if (searchQuery && e.item.name.toLowerCase().indexOf(searchQuery) === -1) return false;
+          return true;
         });
 
-        root.appendChild(UI.details(
-          h('span', null,
-            h('span', { text: cat.label + ' ' }),
-            UI.pill(String(entries.reduce(function (a, e) { return a + e.qty; }, 0)), 'grey')
-          ),
-          body,
-          cat.id === 'medical' || cat.id === 'weapon'
-        ));
+        if (!filtered.length) {
+          itemsContainer.appendChild(UI.emptyState('🔍', 'No matching items', 'No carried items match the active category or search filter.'));
+          return;
+        }
+
+        var totalPages = Math.ceil(filtered.length / pageSize);
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        var startIdx = (currentPage - 1) * pageSize;
+        var pagedItems = filtered.slice(startIdx, startIdx + pageSize);
+
+        var listGrid = h('div', { class: 'grid two', style: { gap: '8px' } });
+        pagedItems.forEach(function (e) {
+          listGrid.appendChild(itemRow(e));
+        });
+        itemsContainer.appendChild(listGrid);
+
+        var pag = UI.pagination(currentPage, totalPages, function (p) {
+          currentPage = p;
+          renderItemsList();
+        });
+        if (pag) pagContainer.appendChild(pag);
+      }
+
+      tabsContainer.appendChild(UI.tabBar(getCategoryTabs(), activeCat, function (catId) {
+        activeCat = catId;
+        currentPage = 1;
+        renderItemsList();
+      }));
+
+      searchBox.addEventListener('input', function () {
+        searchQuery = searchBox.value.trim().toLowerCase();
+        currentPage = 1;
+        renderItemsList();
       });
 
+      root.appendChild(tabsContainer);
+      root.appendChild(itemsContainer);
+      root.appendChild(pagContainer);
+
+      renderItemsList();
       return root;
     }
   };

@@ -6,7 +6,7 @@ window.CALIGO = window.CALIGO || {};
   var cfg = {};
 
   cfg.SAVE_KEY = 'caligo.save';
-  cfg.SAVE_VERSION = 3;
+  cfg.SAVE_VERSION = 4;
   cfg.TICK_MS = 1000;
   cfg.AUTOSAVE_SECONDS = 5;
   cfg.OFFLINE_CAP_HOURS = 8;
@@ -90,6 +90,7 @@ window.CALIGO = window.CALIGO || {};
   };
 
   cfg.MARKET = {
+    salesTax: 0.05,
     maxListings: 5,
     targetListingCount: 30,
     refreshMinutes: 60,
@@ -177,6 +178,23 @@ window.CALIGO = window.CALIGO || {};
   cfg.MISSIONS = {
     daily: ['pickpocket_5', 'fight_3', 'stock_1', 'train_5'],
     weekly: ['crimes_50', 'fights_25', 'earn_1m', 'property_1'],
+  };
+
+  /* ============ PHASE 4 MERITS CONFIG ============ */
+  cfg.MERITS = {
+    categories: {
+      sharpness:   { id: 'sharpness',   name: 'Sharpness',           desc: 'Increases passive Speed by +1% per upgrade.', max: 10, bonusPerTier: 0.01, stat: 'speed' },
+      brawn:       { id: 'brawn',       name: 'Brawn',               desc: 'Increases passive Strength by +1% per upgrade.', max: 10, bonusPerTier: 0.01, stat: 'strength' },
+      protection:  { id: 'protection',  name: 'Protection',          desc: 'Increases passive Defense by +1% per upgrade.', max: 10, bonusPerTier: 0.01, stat: 'defense' },
+      evasion:     { id: 'evasion',     name: 'Evasion',             desc: 'Increases passive Dexterity by +1% per upgrade.', max: 10, bonusPerTier: 0.01, stat: 'dexterity' },
+      crit:        { id: 'crit',        name: 'Critical Hit Rate',    desc: 'Increases critical strike chance by +1% per upgrade.', max: 10, bonusPerTier: 0.01 },
+      nerve_bar:   { id: 'nerve_bar',   name: 'Natural Nerve Bar',   desc: 'Increases natural maximum nerve bar by +1 per upgrade.', max: 10, bonusPerTier: 1 },
+      ce:          { id: 'ce',          name: 'Crime Experience',     desc: 'Increases Crime Experience & crime skill gain by +3% per upgrade.', max: 10, bonusPerTier: 0.03 },
+      edu:         { id: 'edu',         name: 'Education Efficiency', desc: 'Reduces course completion duration by −2% per upgrade.', max: 10, bonusPerTier: 0.02 },
+      bank:        { id: 'bank',        name: 'Bank Investment APR',  desc: 'Increases bank savings & deposit interest rates by +5% per upgrade.', max: 10, bonusPerTier: 0.05 },
+      mug:         { id: 'mug',         name: 'Masterful Looting',    desc: 'Increases mug cash payout after combat victory by +5% per upgrade.', max: 10, bonusPerTier: 0.05 },
+      life:        { id: 'life',        name: 'Fortitude',           desc: 'Increases maximum life capacity by +3% per upgrade.', max: 10, bonusPerTier: 0.03 }
+    }
   };
 
   C.config = cfg;

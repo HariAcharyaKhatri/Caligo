@@ -66,6 +66,18 @@ window.CALIGO = window.CALIGO || {};
       save.counters = save.counters || {};
       ['works','coursesCompleted','spends','jobsQuit'].forEach(function (k) { save.counters[k] = save.counters[k] || 0; });
       return save;
+    },
+    3: function (save) {
+      save.version = 4;
+      /* Phase 4 additions: Merits Allocation, Enhancers & Properties */
+      save.player.meritUpgrades = save.player.meritUpgrades || {
+        sharpness: 0, brawn: 0, protection: 0, evasion: 0,
+        crit: 0, nerve_bar: 0, ce: 0, edu: 0, bank: 0, mug: 0, life: 0
+      };
+      save.player.property = save.player.property || 'shack';
+      save.player.propertiesOwned = save.player.propertiesOwned || ['shack'];
+      save.forums = save.forums || [];
+      return save;
     }
   };
 
@@ -104,6 +116,14 @@ window.CALIGO = window.CALIGO || {};
     ['job','education','companies','faction','territories','casino','missions','lists'].forEach(function (k) {
       if (!save[k]) save[k] = fresh[k];
     });
+    if (!save.player.meritUpgrades) {
+      save.player.meritUpgrades = {
+        sharpness: 0, brawn: 0, protection: 0, evasion: 0,
+        crit: 0, nerve_bar: 0, ce: 0, edu: 0, bank: 0, mug: 0, life: 0
+      };
+    }
+    if (!save.player.property) save.player.property = 'shack';
+    if (!save.player.propertiesOwned) save.player.propertiesOwned = ['shack'];
     if (!save.meta.lastReal) save.meta.lastReal = Date.now();
     if (save.meta.gameTime === undefined) save.meta.gameTime = 0;
     return save;

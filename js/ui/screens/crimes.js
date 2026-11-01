@@ -49,34 +49,73 @@ window.CALIGO = window.CALIGO || {};
         return root;
       }
 
-      /* Group crimes by tier */
+      /* Group crimes by tier with page/tab navigation */
       var tiers = Object.keys(D.crimesByTier).map(Number).sort(function (a, b) { return a - b; });
+      var activeTier = 'all';
 
-      tiers.forEach(function (tier) {
-        var crimes = D.crimesByTier[tier];
-        var unlocked = p.crimeLevel >= crimes[0].cl;
-        var body = h('div');
+      var tierNames = {
+        1: 'Tier 1: Petty',
+        2: 'Tier 2: Street',
+        3: 'Tier 3: Syndicate',
+        4: 'Tier 4: Heavy',
+        5: 'Tier 5: Master'
+      };
 
-        if (!unlocked) {
-          body.appendChild(h('p', { class: 'dim small',
-            text: 'Locked: Requires Crime Level ' + crimes[0].cl + ' (' + S.crimeLevelName(crimes[0].cl) +
-                  '). Your Current Rank: ' + S.crimeLevelName(p.crimeLevel) + '.' }));
-        }
+      var tierTabDefs = [
+        { id: 'all', label: 'All Operations', count: 13 }
+      ];
 
-        crimes.forEach(function (crime) {
-          body.appendChild(crimeCard(crime, unlocked));
+      tiers.forEach(function (t) {
+        var count = (D.crimesByTier[t] || []).length;
+        tierTabDefs.push({
+          id: String(t),
+          label: tierNames[t] || ('Tier ' + t),
+          count: count
         });
-
-        root.appendChild(UI.details(
-          h('span', null,
-            h('span', { style: { fontWeight: '700' }, text: 'Tier ' + tier + ' Operations ' }),
-            UI.pill(unlocked ? '✓ UNLOCKED' : '🔒 LOCKED', unlocked ? 'good' : 'grey'),
-            h('span', { class: 'small muted', text: '  (' + crimes.length + ' Available Jobs)' })
-          ),
-          body,
-          tier === 1 || (unlocked && p.crimeLevel <= crimes[0].cl + 1)
-        ));
       });
+
+      var tabsContainer = h('div', { style: { marginBottom: '14px' } });
+      var tiersContainer = h('div', { class: 'crimes-tiers-list' });
+
+      function renderTierViews() {
+        C.dom.clear(tiersContainer);
+        tiers.forEach(function (tier) {
+          if (activeTier !== 'all' && activeTier !== String(tier)) return;
+
+          var crimes = D.crimesByTier[tier];
+          var unlocked = p.crimeLevel >= crimes[0].cl;
+          var body = h('div');
+
+          if (!unlocked) {
+            body.appendChild(h('p', { class: 'dim small',
+              text: 'Locked: Requires Crime Level ' + crimes[0].cl + ' (' + S.crimeLevelName(crimes[0].cl) +
+                    '). Your Current Rank: ' + S.crimeLevelName(p.crimeLevel) + '.' }));
+          }
+
+          crimes.forEach(function (crime) {
+            body.appendChild(crimeCard(crime, unlocked));
+          });
+
+          tiersContainer.appendChild(UI.details(
+            h('span', null,
+              h('span', { style: { fontWeight: '700' }, text: (tierNames[tier] || ('Tier ' + tier)) + ' ' }),
+              UI.pill(unlocked ? '✓ UNLOCKED' : '🔒 LOCKED', unlocked ? 'good' : 'grey'),
+              h('span', { class: 'small muted', text: '  (' + crimes.length + ' Available Jobs)' })
+            ),
+            body,
+            activeTier !== 'all' || tier === 1 || (unlocked && p.crimeLevel <= crimes[0].cl + 1)
+          ));
+        });
+      }
+
+      tabsContainer.appendChild(UI.tabBar(tierTabDefs, activeTier, function (tId) {
+        activeTier = tId;
+        renderTierViews();
+      }));
+
+      renderTierViews();
+      root.appendChild(tabsContainer);
+      root.appendChild(tiersContainer);
 
       return root;
     }
@@ -87,11 +126,12 @@ window.CALIGO = window.CALIGO || {};
     var sv = C.state.save;
     var p = sv.player;
 
-    var canAfford = p.nerve >= crime.nerve;
+    var minNerve = (crime.id === 'arson') ? 0 : ((crime.id === 'burglary' || crime.id === 'card_skimming' || crime.id === 'bootlegging') ? 2 : crime.nerve);
+    var canAfford = p.nerve >= minNerve;
     var state = h('span', { class: 'small' });
 
     var info = h('div', { class: 'small muted', style: { margin: '4px 0 8px' } },
-      h('span', { style: { color: 'var(--red)', fontWeight: '700' }, text: crime.nerve + ' Nerve Cost · ' }),
+      h('span', { style: { color: 'var(--red)', fontWeight: '700' }, text: crime.nerve + ' Nerve Base · ' }),
       h('span', { text: 'Base Odds ' + Math.round(crime.base * 100) + '% · ' }),
       h('span', { class: 'gold bold', text: 'Reward ' + U.compact(crime.reward[0]) + '–' + U.compact(crime.reward[1]) }),
       h('span', { text: ' · Jail ' + crime.jail[0] + '–' + crime.jail[1] + 'm' })
@@ -110,16 +150,16 @@ window.CALIGO = window.CALIGO || {};
         h('button', {
           class: unlocked ? 'primary small' : 'small',
           text: '🔍 Scope Out Target Marks',
-          disabled: !unlocked || !canAfford,
+          disabled: !unlocked,
           onclick: function () { openTargets(crime); }
         })
       )
     );
 
     function live(s) {
-      var ok = s.player.nerve >= crime.nerve && unlocked;
+      var ok = s.player.nerve >= minNerve && unlocked;
       var btn = card.querySelector('button');
-      if (btn) btn.disabled = !ok;
+      if (btn) btn.disabled = !unlocked;
       C.dom.setText(state, ok ? '' : (unlocked ? 'Low Nerve' : 'Locked'));
       state.className = 'pill ' + (ok ? 'good' : (unlocked ? 'bad' : 'grey'));
     }
@@ -168,28 +208,52 @@ window.CALIGO = window.CALIGO || {};
   }
 
   function targetCard(crime, target, onGo) {
+    var sv = C.state.save;
     var calc = A.crimeChance(crime, target);
     var pct = Math.round(calc.chance * 100);
 
-    var traits = h('div', { class: 'row', style: { gap: '4px', margin: '6px 0' } });
+    var reqTool = target.reqItem || target.reqTool;
+    var hasReqTool = !reqTool || S.ownsItem(sv, reqTool);
+    var reqToolName = reqTool ? (D.items[reqTool] ? D.items[reqTool].name : reqTool) : null;
+
+    var targetNerve = (target.nerveCost !== undefined) ? target.nerveCost : crime.nerve;
+    var canAffordNerve = sv.player.nerve >= targetNerve;
+    var canExecute = hasReqTool && canAffordNerve;
+    var btnText = !hasReqTool ? ('Missing ' + reqToolName) : (!canAffordNerve ? ('Need ' + targetNerve + ' Nerve') : ('⚡ Execute Operation (' + targetNerve + 'N)'));
+
+    var traits = h('div', { class: 'row', style: { gap: '4px', margin: '6px 0', flexWrap: 'wrap' } });
     traits.appendChild(UI.pill(target.wealth.label, 'gold'));
+    if (reqToolName) {
+      traits.appendChild(UI.pill((hasReqTool ? '✓ Tool: ' : '✗ Requires: ') + reqToolName, hasReqTool ? 'good' : 'bad'));
+    }
+    traits.appendChild(UI.pill(targetNerve + ' Nerve' + (targetNerve === 0 ? ' (Free)' : ''), 'blue'));
     target.traits.forEach(function (t) {
       var cls = t.mod > 0 ? 'good' : (t.mod < 0 ? 'bad' : 'grey');
-      traits.appendChild(UI.pill(t.label + ' ' + (t.mod > 0 ? '+' : '') + t.mod, cls));
+      traits.appendChild(UI.pill(t.label + ' ' + (t.mod > 0 ? '+' : '') + t.mod + (t.mod ? '%' : ''), cls));
     });
 
-    var low = Math.round(crime.reward[0] * target.rewardMult);
-    var high = Math.round(crime.reward[1] * target.rewardMult);
+    var baseLow = (target.rewardMin !== undefined) ? target.rewardMin : crime.reward[0];
+    var baseHigh = (target.rewardMax !== undefined) ? target.rewardMax : crime.reward[1];
+    var low = Math.round(baseLow * target.rewardMult);
+    var high = Math.round(baseHigh * target.rewardMult);
 
     return h('div', { class: 'crime-mark-card' },
       h('div', { class: 'row between' },
-        h('strong', { style: { color: '#fff', fontSize: '1.05em' }, text: target.title }),
+        h('div', null,
+          h('strong', { style: { color: '#fff', fontSize: '1.05em' }, text: target.title }),
+          target.subTitle ? h('div', { class: 'small muted', style: { marginTop: '2px' }, text: target.subTitle }) : null
+        ),
         h('span', { class: 'chance-big ' + UI.chanceClass(calc.chance), text: pct + '% Success Odds' })
       ),
       traits,
       h('div', { class: 'row between', style: { marginTop: '8px' } },
-        h('span', { class: 'small gold', text: 'Est. Take: ' + U.compact(low) + ' – ' + U.compact(high) }),
-        h('button', { class: 'primary small', text: '⚡ Execute Operation', onclick: onGo })
+        h('span', { class: 'small gold', text: 'Est. Take: ' + U.money(low) + ' – ' + U.money(high) }),
+        h('button', {
+          class: 'primary small',
+          disabled: !canExecute,
+          text: btnText,
+          onclick: onGo
+        })
       )
     );
   }

@@ -22,19 +22,99 @@ window.CALIGO = window.CALIGO || {};
   UI.tabs = function (tabs, activeId, onChange) {
     var bar = h('div', { class: 'torn-tabs' });
     tabs.forEach(function (tab) {
+      var contentEls = [];
+      if (tab.icon) {
+        contentEls.push(h('span', { class: 'tab-icon', text: tab.icon + ' ' }));
+      }
+      contentEls.push(h('span', { class: 'tab-text', text: tab.label }));
+      if (tab.badge !== undefined && tab.badge !== null) {
+        contentEls.push(h('span', { class: 'tab-badge', text: String(tab.badge) }));
+      } else if (tab.count !== undefined && tab.count !== null) {
+        contentEls.push(h('span', { class: 'tab-badge', text: String(tab.count) }));
+      }
+
       var btn = h('button', {
         class: 'torn-tab' + (tab.id === activeId ? ' active' : ''),
-        text: tab.label,
         type: 'button',
         onclick: function () {
           C.dom.qsa('.torn-tab', bar).forEach(function (b) { b.classList.remove('active'); });
           btn.classList.add('active');
           if (onChange) onChange(tab.id);
         }
-      });
+      }, contentEls);
       bar.appendChild(btn);
     });
     return bar;
+  };
+
+  UI.tabBar = UI.tabs;
+
+  UI.pagination = function (page, totalPages, onChange) {
+    if (totalPages <= 1) return h('div', { class: 'pagination-bar single-page' });
+    var wrap = h('div', { class: 'pagination-bar' });
+
+    var prevBtn = h('button', {
+      class: 'pag-btn' + (page <= 1 ? ' disabled' : ''),
+      type: 'button',
+      disabled: page <= 1,
+      text: '‹ Prev',
+      onclick: function () {
+        if (page > 1 && onChange) onChange(page - 1);
+      }
+    });
+    wrap.appendChild(prevBtn);
+
+    var info = h('span', { class: 'pag-info', text: 'Page ' + page + ' of ' + totalPages });
+    wrap.appendChild(info);
+
+    var nextBtn = h('button', {
+      class: 'pag-btn' + (page >= totalPages ? ' disabled' : ''),
+      type: 'button',
+      disabled: page >= totalPages,
+      text: 'Next ›',
+      onclick: function () {
+        if (page < totalPages && onChange) onChange(page + 1);
+      }
+    });
+    wrap.appendChild(nextBtn);
+
+    return wrap;
+  };
+
+  UI.stepper = function (steps, activeIndex, onStepClick) {
+    var wrap = h('div', { class: 'stepper-bar' });
+    steps.forEach(function (step, idx) {
+      var isCompleted = idx < activeIndex;
+      var isActive = idx === activeIndex;
+      var stepItem = h('div', {
+        class: 'step-item' + (isActive ? ' active' : '') + (isCompleted ? ' completed' : ''),
+        onclick: onStepClick ? function () { onStepClick(idx); } : null
+      },
+        h('span', { class: 'step-badge', text: isCompleted ? '✓' : String(idx + 1) }),
+        h('span', { class: 'step-label', text: typeof step === 'string' ? step : step.label })
+      );
+      wrap.appendChild(stepItem);
+      if (idx < steps.length - 1) {
+        wrap.appendChild(h('div', { class: 'step-connector' + (idx < activeIndex ? ' filled' : '') }));
+      }
+    });
+    return wrap;
+  };
+
+  UI.emptyState = function (icon, title, message, actionText, onAction) {
+    var box = h('div', { class: 'empty-state' },
+      h('div', { class: 'empty-icon', text: icon || '◈' }),
+      h('h3', { class: 'empty-title', text: title || 'Nothing to show' }),
+      message ? h('p', { class: 'empty-desc', text: message }) : null
+    );
+    if (actionText && onAction) {
+      box.appendChild(h('button', {
+        class: 'primary small',
+        text: actionText,
+        onclick: onAction
+      }));
+    }
+    return box;
   };
 
   UI.bar = function (label, color) {

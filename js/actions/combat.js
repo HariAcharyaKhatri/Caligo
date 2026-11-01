@@ -130,7 +130,8 @@ window.CALIGO = window.CALIGO || {};
 
   function playerAttack(sv, bot, combat, move) {
     var myPower = S.playerPower(sv);
-    var mySpeed = sv.player.stats.speed + sv.player.stats.dexterity;
+    var eff = S.effectiveStats ? S.effectiveStats(sv) : sv.player.stats;
+    var mySpeed = eff.speed + eff.dexterity;
     var botSpeed = bot.stats.speed + bot.stats.dexterity;
     var hitChance = cfg.COMBAT.baseHitChance + move.hit +
       U.clamp((mySpeed - botSpeed) / 800, -0.15, 0.15);
@@ -141,15 +142,19 @@ window.CALIGO = window.CALIGO || {};
       return;
     }
 
-    var raw = myPower * cfg.COMBAT.damageFraction * move.dmg;
+    var isCrit = S.critChance ? U.chance(S.critChance(sv)) : false;
+    var critMult = isCrit ? 1.5 : 1.0;
+
+    var raw = myPower * cfg.COMBAT.damageFraction * move.dmg * critMult;
     var variance = 1 + U.rand(-cfg.COMBAT.damageVariance, cfg.COMBAT.damageVariance);
     var soft = raw * (1 - bot.stats.defense / (bot.stats.defense + cfg.COMBAT.defenceSoften));
     var dmg = Math.max(cfg.COMBAT.minDamage, Math.round(soft * variance));
     if (bot._disarmed) dmg = Math.round(dmg * 0.7);
 
     combat.botLife = Math.max(0, combat.botLife - dmg);
-    combat.log.push({ side: 'player', text: U.pick(D.combatFlavour.playerHit) + ' (-' + dmg + ' life)' });
-    if (C.audio && C.audio.play) C.audio.play(dmg > raw * 1.2 ? 'crit' : 'hit');
+    var critText = isCrit ? '★ CRITICAL HIT! ' : '';
+    combat.log.push({ side: 'player', text: critText + U.pick(D.combatFlavour.playerHit) + ' (-' + dmg + ' life)' });
+    if (C.audio && C.audio.play) C.audio.play(isCrit || dmg > raw * 1.2 ? 'crit' : 'hit');
 
     if (combat.botLife <= 0) {
       combat.log.push({ side: 'system', text: U.pick(D.combatFlavour.koWin) });
@@ -162,7 +167,8 @@ window.CALIGO = window.CALIGO || {};
     var botMove = pickBotMove(bot);
     var botPower = C.bots.power(bot);
     var myDef = S.playerDefence(sv);
-    var mySpeed = sv.player.stats.speed + sv.player.stats.dexterity;
+    var eff = S.effectiveStats ? S.effectiveStats(sv) : sv.player.stats;
+    var mySpeed = eff.speed + eff.dexterity;
     var botSpeed = bot.stats.speed + bot.stats.dexterity;
 
     /* Guard / dodge can negate the bot's strike. */
@@ -184,6 +190,13 @@ window.CALIGO = window.CALIGO || {};
     var raw = botPower * cfg.COMBAT.damageFraction * botMove.dmg;
     var variance = 1 + U.rand(-cfg.COMBAT.damageVariance, cfg.COMBAT.damageVariance);
     var soft = raw * (1 - myDef / (myDef + cfg.COMBAT.defenceSoften));
+
+    /* Official Armor Mitigation D(A) = D * (1 - A/100) */
+    var ar = S.equippedArmour(sv);
+    var armorRating = ar ? (ar.def || 0) : 0;
+    var armorMitigation = Math.min(cfg.COMBAT.armorMitigationCap || 0.85, armorRating / 100);
+    soft = soft * (1 - armorMitigation);
+
     var dmg = Math.max(cfg.COMBAT.minDamage, Math.round(soft * variance));
     if (guard && guard.incoming) dmg = Math.max(1, Math.round(dmg * guard.incoming));
 
@@ -281,7 +294,8 @@ window.CALIGO = window.CALIGO || {};
     if (!bot) { sv.combat = null; return { ok: false, reason: 'They are gone.' }; }
 
     if (choice === 'mug') {
-      var take = Math.round(bot.cash * cfg.COMBAT.mugShare);
+      var mugBonus = 1 + ((sv.player.meritUpgrades && sv.player.meritUpgrades.mug) ? sv.player.meritUpgrades.mug * 0.05 : 0);
+      var take = Math.round(bot.cash * cfg.COMBAT.mugShare * mugBonus);
       bot.cash -= take;
       sv.player.cash += take;
       if (take > 0 && C.audio && C.audio.play) C.audio.play('cash');

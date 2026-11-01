@@ -71,6 +71,17 @@ window.CALIGO = window.CALIGO || {};
       );
       root.appendChild(betControlRow);
 
+      /* Casino Navigation Tabs */
+      var activeCasinoTab = 'slots';
+      var casinoTabsBar = h('div', { style: { marginBottom: '14px' } });
+      var casinoContentWrap = h('div', { class: 'casino-content-wrap' });
+
+      var casinoTabs = [
+        { id: 'slots', label: 'High-Roller Slots', icon: '🎰' },
+        { id: 'tables', label: 'Casino Table Games', icon: '🎲', count: D.casinoGames.length - 1 },
+        { id: 'overview', label: 'Wallet & Daily Tokens', icon: '🎁' }
+      ];
+
       /* ---- FEATURED GAME: LUCKY SLOTS ---- */
       var slotSymbols = ['🍒', '🍋', '🔔', '💎', '7️⃣', '🎰'];
       var reel1 = h('div', { class: 'slot-reel', text: '7️⃣' });
@@ -144,7 +155,6 @@ window.CALIGO = window.CALIGO || {};
         spinBtn,
         spinResultMsg
       );
-      root.appendChild(slotsCard);
 
       /* ---- ALL CASINO GAMES GRID ---- */
       var gamesGrid = h('div', { class: 'card-grid' });
@@ -187,9 +197,44 @@ window.CALIGO = window.CALIGO || {};
           })
         ));
       });
+      var tablesSection = UI.section('Interactive Casino Tables', [gamesGrid]);
 
-      root.appendChild(UI.section('Other Casino Tables', [gamesGrid]));
-      root.appendChild(h('p', { class: 'small dim center', text: 'All games use fictional Caligo credits. Gamblers Anonymous Hotline available at City Clinic.' }));
+      function renderActiveCasinoView() {
+        C.dom.clear(casinoContentWrap);
+        if (activeCasinoTab === 'slots') {
+          casinoContentWrap.appendChild(slotsCard);
+        } else if (activeCasinoTab === 'tables') {
+          casinoContentWrap.appendChild(tablesSection);
+        } else if (activeCasinoTab === 'overview') {
+          casinoContentWrap.appendChild(UI.card('Daily Casino Tokens & High Stakes Overview',
+            'Claim 50 free casino tokens every calendar day to wager at the slots or tables.',
+            h('div', { class: 'stack' },
+              h('p', { text: 'Tokens are used for exclusive high-roller raffles and multiplier side bets.' }),
+              h('button', {
+                class: 'green primary',
+                text: '🎁 Claim +50 Daily Free Tokens',
+                onclick: function () {
+                  var r = A.claimCasinoTokens();
+                  if (!r.ok) { UI.toast(r.reason, 'bad'); return; }
+                  if (C.audio) C.audio.play('cash');
+                  UI.toast('+' + r.amount + ' casino tokens claimed!', 'money');
+                  C.router.go('casino');
+                }
+              })
+            )
+          ));
+        }
+      }
+
+      casinoTabsBar.appendChild(UI.tabBar(casinoTabs, activeCasinoTab, function (tabId) {
+        activeCasinoTab = tabId;
+        renderActiveCasinoView();
+      }));
+
+      renderActiveCasinoView();
+      root.appendChild(casinoTabsBar);
+      root.appendChild(casinoContentWrap);
+      root.appendChild(h('p', { class: 'small dim center', style: { marginTop: '16px' }, text: 'All games use fictional Caligo credits. Gamblers Anonymous Hotline available at City Clinic.' }));
 
       return root;
     }

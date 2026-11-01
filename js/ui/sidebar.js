@@ -88,11 +88,7 @@ window.CALIGO = window.CALIGO || {};
     var useMerits = document.getElementById('use-merits');
     if (useMerits) {
       useMerits.addEventListener('click', function () {
-        UI.modal({
-          title: 'Merits Upgrade Center',
-          body: 'Allocate earned merits to permanently boost Health (+3%), Critical Strike (+2%), or Crime Success (+1.5%). Available in Phase 4 update.',
-          actions: [{ label: 'Got It', primary: true }]
-        });
+        C.router.go('merits');
       });
     }
 
@@ -182,7 +178,11 @@ window.CALIGO = window.CALIGO || {};
         var btn = h('button', {
           class: 'nav-btn',
           dataset: { screen: l.id, list: l.countKey || '' },
-          onclick: function () { C.router.go(l.id); }
+          onclick: function () {
+            C.router.go(l.id);
+            var sb = document.getElementById('sidebar');
+            if (sb) sb.classList.remove('mobile-open');
+          }
         },
           h('span', { class: 'nav-icon', text: l.icon }),
           h('span', { class: 'nav-label', text: l.label })
@@ -193,6 +193,41 @@ window.CALIGO = window.CALIGO || {};
         navLists.appendChild(btn);
       });
     }
+
+    /* Mobile drawer toggle buttons */
+    function toggleMobileDrawer() {
+      var sb = document.getElementById('sidebar');
+      if (sb) {
+        sb.classList.toggle('mobile-open');
+        var isOpen = sb.classList.contains('mobile-open');
+        var btnNav = document.getElementById('btn-mobile-nav');
+        var mbMenu = document.getElementById('mb-btn-menu');
+        if (btnNav) btnNav.classList.toggle('active', isOpen);
+        if (mbMenu) mbMenu.classList.toggle('active', isOpen);
+      }
+    }
+
+    var btnMobNav = document.getElementById('btn-mobile-nav');
+    if (btnMobNav) {
+      btnMobNav.addEventListener('click', toggleMobileDrawer);
+    }
+
+    var mbMenuBtn = document.getElementById('mb-btn-menu');
+    if (mbMenuBtn) {
+      mbMenuBtn.addEventListener('click', toggleMobileDrawer);
+    }
+
+    /* Mobile bottom navigation destination buttons */
+    C.dom.qsa('.mb-btn[data-screen]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var screenId = btn.dataset.screen;
+        if (screenId) {
+          C.router.go(screenId);
+          var sb = document.getElementById('sidebar');
+          if (sb) sb.classList.remove('mobile-open');
+        }
+      });
+    });
 
     C.engine.live(Sidebar.update);
     Sidebar.update(C.state.save);
@@ -309,6 +344,9 @@ window.CALIGO = window.CALIGO || {};
       b.classList.toggle('active', b.dataset.screen === current);
     });
     C.dom.qsa('.nav-btn', document.getElementById('nav-lists')).forEach(function (b) {
+      b.classList.toggle('active', b.dataset.screen === current);
+    });
+    C.dom.qsa('.mb-btn[data-screen]').forEach(function (b) {
       b.classList.toggle('active', b.dataset.screen === current);
     });
 
