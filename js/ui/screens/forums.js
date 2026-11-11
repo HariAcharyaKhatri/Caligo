@@ -185,7 +185,7 @@ window.CALIGO = window.CALIGO || {};
             thread.repliesCount = (thread.repliesCount || 0) + 1;
             replyInput.value = '';
             UI.toast('Reply posted.', 'good');
-            C.storage.save(sv);
+            C.storage.write(sv);
             C.router.render();
           }
         }
@@ -231,7 +231,7 @@ window.CALIGO = window.CALIGO || {};
             };
             sv.forums.push(newThread);
             C.actions.log('Published forum thread "' + title + '" in ' + catName + '.', 'info');
-            C.storage.save(sv);
+            C.storage.write(sv);
             UI.toast('Thread published!', 'good');
             C.router.render();
           }

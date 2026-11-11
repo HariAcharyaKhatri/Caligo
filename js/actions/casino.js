@@ -124,5 +124,16 @@ window.CALIGO = window.CALIGO || {};
     return { ok: true, payout: payout, profit: profit, detail: detail, game: game.name };
   };
 
+  A.tickCasino = function () {
+    var sv = save();
+    if (!sv || !sv.casino) return;
+    var now = sv.meta.gameTime;
+    if (!sv.casino.lastDayReset) sv.casino.lastDayReset = now;
+    if (now - sv.casino.lastDayReset >= 86400) {
+      sv.casino.betsToday = 0;
+      sv.casino.lastDayReset = now;
+    }
+  };
+
   C.actions = A;
 })(window.CALIGO);

@@ -143,14 +143,17 @@ window.CALIGO = window.CALIGO || {};
 
   /* Weather is rolled once per real calendar day and cached on the save. */
   Engine.rollWeather = function (save, nowMs) {
+    if (!save) return;
+    save.weather = save.weather || { id: 'clear', dayKey: '' };
     var key = S.dayKey(new Date(nowMs));
     if (save.weather.dayKey === key) return;
     var pick = U.pickWeighted(C.data.weatherTypes);
-    save.weather.id = pick.id;
+    save.weather.id = pick ? pick.id : 'clear';
     save.weather.dayKey = key;
   };
 
   Engine.weather = function (save) {
+    if (!save || !save.weather || !save.weather.id) return C.data.weatherTypes[0];
     for (var i = 0; i < C.data.weatherTypes.length; i++) {
       if (C.data.weatherTypes[i].id === save.weather.id) return C.data.weatherTypes[i];
     }

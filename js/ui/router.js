@@ -25,9 +25,12 @@ window.CALIGO = window.CALIGO || {};
   };
 
   Router.current = function () { return current; };
+  Router.render = function () { Router.go(current); };
+  Router.refresh = function () { Router.go(current); };
   Router.readHash = function () {
-    var m = /^#\/([a-z]+)/.exec(window.location.hash || '');
-    return m && C.screens[m[1]] ? m[1] : 'home';
+    var m = /^#\/([a-zA-Z0-9_-]+)/.exec(window.location.hash || '');
+    var id = m ? m[1].toLowerCase() : 'home';
+    return C.screens[id] ? id : 'home';
   };
 
   C.router = Router;

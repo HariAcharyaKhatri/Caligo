@@ -18,6 +18,7 @@ window.CALIGO = window.CALIGO || {};
     Store.memory = json;
     return false;
   };
+  Store.save = Store.write;
   Store.read = function () {
     var json = null;
     if (Store.available) { try { json = window.localStorage.getItem(cfg.SAVE_KEY); } catch (e) {} }
